@@ -4,3 +4,4 @@ env/
 .vscode/
 *.log
 .DS_Store
+dataset/

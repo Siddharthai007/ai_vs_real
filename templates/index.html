@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Image Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        #image-preview {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            display: none; /* Hidden by default */
+        }
+        #result-display {
+            margin-top: 30px;
+            padding: 15px;
+            border: 2px solid #5cb85c;
+            border-radius: 5px;
+            background-color: #d9edf7;
+            color: #31708f;
+            display: none; /* Hidden by default */
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🖼️ Deepfake Image Detector</h1>
+    <p>Upload an image to check if it's real or a deepfake.</p>
+    
+    <form id="upload-form">
+        <input type="file" id="image-input" name="image" accept="image/*" onchange="previewImage()" required>
+        <br>
+        <button type="button" onclick="submitImage()">Detect Deepfake</button>
+    </form>
+    
+    <hr>
+
+    <img id="image-preview" src="#" alt="Image Preview" />
+    
+    <div id="loading-spinner" class="spinner"></div>
+
+    <div id="result-display">
+        <span id="result-text">Prediction: ... | Confidence: ...</span>
+    </div>
+
+</div>
+
+<script>
+    const imageInput = document.getElementById('image-input');
+    const imagePreview = document.getElementById('image-preview');
+    const resultDisplay = document.getElementById('result-display');
+    const resultText = document.getElementById('result-text');
+    const spinner = document.getElementById('loading-spinner');
+
+    /**
+     * Shows a preview of the selected image file.
+     * This function corresponds to the `previewImage()` logic described [03:50:00].
+     */
+    function previewImage() {
+        const file = imageInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                resultDisplay.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            imagePreview.style.display = 'none';
+        }
+    }
+
+    /**
+     * Handles the image submission, API call, and result display.
+     * This function corresponds to the `submitImage()` logic described [03:51:00].
+     */
+    async function submitImage() {
+        const file = imageInput.files[0];
+
+        if (!file) {
+            alert("Please select an image file first.");
+            return;
+        }
+
+        // Show spinner and hide previous results [04:05:00]
+        spinner.style.display = 'block';
+        resultDisplay.style.display = 'none';
+        resultText.textContent = 'Analyzing...';
+        
+        // Use FormData to package the file for the POST request
+        const formData = new FormData();
+        formData.append('image', file); // The variable name 'image' matches the request.files['image'] in app.py
+
+        try {
+            // Fetch call to the Flask endpoint /predict [03:53:00]
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData,
+            });
+
+            // Handle non-200 responses
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            // Process the JSON response [03:53:50]
+            const data = await response.json();
+
+            // Display results [04:41:00]
+            resultText.innerHTML = `
+                **Prediction:** ${data.prediction.toUpperCase()} | 
+                **Confidence:** ${Math.round(data.confidence * 100)}%
+            `;
+            
+            // Adjust styling based on prediction (optional but helpful)
+            if (data.prediction.toUpperCase() === 'FAKE') {
+                resultDisplay.style.borderColor = '#d9534f'; 
+                resultDisplay.style.backgroundColor = '#f2dede'; 
+                resultDisplay.style.color = '#a94442'; 
+            } else {
+                resultDisplay.style.borderColor = '#5cb85c'; 
+                resultDisplay.style.backgroundColor = '#dff0d8'; 
+                resultDisplay.style.color = '#3c763d'; 
+            }
+            
+            resultDisplay.style.display = 'block';
+
+        } catch (error) {
+            console.error('Detection failed:', error);
+            resultText.innerHTML = `Error: ${error.message}`;
+            resultDisplay.style.display = 'block';
+            // Set error colors
+            resultDisplay.style.borderColor = '#d9534f'; 
+            resultDisplay.style.backgroundColor = '#f2dede'; 
+            resultDisplay.style.color = '#a94442'; 
+        } finally {
+            // Hide spinner
+            spinner.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>

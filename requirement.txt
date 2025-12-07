@@ -1,2 +1,12 @@
-
+numpy
+pandas
+matplotlib
+flask
+torch
+torchvision
+gradio
+accelerate
+seaborn
+scikit-learn
+pillow
 
